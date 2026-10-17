@@ -2,6 +2,7 @@
   "name": "mp3_starter",
   "version": "1.0.0",
   "description": "MP3 Starter for CS409 Fall 2026",
+  "type": "module",
   "authors": [
     "Arjun Sivaraman <arjun16@illinois.edu>",
     "Tianyi Zhong <tzhong8@illinois.edu>",
@@ -12,9 +13,9 @@
     "node": ">=24"
   },
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "submit": "node submit.js"
+    "start": "node server.ts",
+    "dev": "nodemon server.ts",
+    "submit": "node submit.ts"
   },
   "repository": {
     "type": "git",
