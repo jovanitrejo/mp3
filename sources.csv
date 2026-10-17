@@ -1,2 +1,3 @@
 source_link,reasoning
 https://mongoosejs.com/docs/guide.html#definition,"Determining how to create a schema programmatically using Mongoose"
+https://stackoverflow.com/questions/61401475/why-is-type-module-in-package-json-file,"Debugging why imports causes syntax errors on TypeScript conversion"
