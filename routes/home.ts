@@ -1,6 +1,6 @@
 import {type Router} from 'express';
 
-export default function (router: Router) {
+export default function (router: Router): Router {
 
     var homeRoute = router.route('/');
 
