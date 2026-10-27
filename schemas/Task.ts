@@ -6,9 +6,9 @@ const taskSchema = new Schema({
     description: String,
     deadline: {
         type: Date,
-        default: Date.now
+        required: true
     },
-    copleted: Boolean,
+    completed: Boolean,
     assignedUser: {
         type: String, // _id of the user this task is assigned to
         default: ""
@@ -21,4 +21,6 @@ const taskSchema = new Schema({
         type: Date,
         default: Date.now,
     }
-})
+});
+
+export default taskSchema;
