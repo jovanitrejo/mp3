@@ -1,8 +1,10 @@
 import express, { type NextFunction, type Request, type Response, type Router } from 'express';
 import mongoose from 'mongoose';
 import parseJSONQueryParam, { BadQueryError } from '../utils/parseJSONQueryParam.ts';
-
-const User = mongoose.model('User', UserSchema);
+import User from '../models/User.ts';
+import Task from '../models/Task.ts';
+import { checkPendingTasks, parsePendingTaskIds } from '../utils/pendingTasks.ts';
+import { HttpError } from '../utils/HttpError.ts';
 
 const router = express.Router();
 
@@ -85,6 +87,60 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
             });
         }
         return next(error);
+    }
+});
+
+router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { name, email, pendingTasks } = req.body ?? {};
+        const taskIds = parsePendingTaskIds(pendingTasks);
+        const newUser = new User({ name, email, pendingTasks: taskIds });
+        await newUser.validate();
+        if (await User.exists({email})) {
+            throw new HttpError(400, "A user with that email already exists");
+        }
+
+        // validate taskIds from body
+        await checkPendingTasks(taskIds);
+
+        // Do server save validation check
+        await newUser.save();
+        // Upon success
+        if (taskIds.length > 0) {
+            // Removes any tasks in the pendingList from other users (if they exist for other users, since the new user owns them)
+            await User.updateMany(
+                {_id: { $ne: newUser._id }, pendingTasks: {$in: taskIds}},
+                { $pull: {pendingTasks: {$in: taskIds}}}
+            );
+            // Assign tasks to new user in the database.
+            await Task.updateMany(
+                { _id: {$in: taskIds}},
+                { assignedUser: newUser._id.toString(), assignedUserName: newUser.name}
+            )
+        }
+        return res.status(201).json({
+            message: "User created",
+            data: newUser
+        });
+    } catch (error: unknown) {
+        if (error instanceof HttpError) {
+            return res.status(error.status).json({
+                message: error.message,
+                data: {}
+            })
+        } else if (error instanceof mongoose.Error.ValidationError) {
+            return res.status(400).json({
+                message: "Make sure that the email and name are valid",
+                data: {}
+            });
+        } else if (error instanceof mongoose.mongo.MongoServerError && error.code === 11000) {
+            return res.status(400).json({
+                message: "A user with that email already exists",
+                data: {}
+            })
+        } else {
+            return next(error);
+        }
     }
 });
 
