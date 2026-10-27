@@ -33,6 +33,14 @@ app.use(express.json());
 // Use routes as a module (see index.js)
 routes(app, router);
 
+// Define global error handling middleware:
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    res.status(500).json({
+        message: "An internal error occurred",
+        data: {}
+    })
+});
+
 // Start the server
 app.listen(port);
 console.log('Server running on port ' + port);
