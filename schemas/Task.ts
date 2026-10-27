@@ -2,13 +2,19 @@ import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 const taskSchema = new Schema({
-    name: String,
+    name: {
+        type: String,
+        required: true
+    },
     description: String,
     deadline: {
         type: Date,
         required: true
     },
-    completed: Boolean,
+    completed: {
+        type: Boolean,
+        default: false
+    },
     assignedUser: {
         type: String, // _id of the user this task is assigned to
         default: ""
