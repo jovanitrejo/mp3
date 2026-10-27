@@ -1,4 +1,5 @@
 source_link,reasoning
 https://mongoosejs.com/docs/guide.html#definition,"Determining how to create a schema programmatically using Mongoose"
 https://stackoverflow.com/questions/61401475/why-is-type-module-in-package-json-file,"Debugging why imports causes syntax errors on TypeScript conversion"
-https://expressjs.com/en/5x/guide/error-handling/,"Defining global error handling middleware"
+https://expressjs.com/en/5x/guide/error-handling/,"Defining global error handling middleware",
+https://stackoverflow.com/questions/19051041/cannot-overwrite-model-once-compiled-mongoose,"Figured out how to avoid overwriting a model twice programmatically by isolating the model definition into their own files"

@@ -1,6 +1,5 @@
 import express, { type NextFunction, type Request, type Response, type Router } from 'express';
 import mongoose from 'mongoose';
-import UserSchema from '../schemas/User.ts';
 import parseJSONQueryParam, { BadQueryError } from '../utils/parseJSONQueryParam.ts';
 
 const User = mongoose.model('User', UserSchema);
