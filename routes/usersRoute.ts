@@ -228,4 +228,33 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
     }
 });
 
+router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = req.params.id;
+        if (!mongoose.isValidObjectId(id)) throw new HttpError(404, "User not found");
+        const user = await User.findById(id);
+        if (!user) throw new HttpError(404, "User not found");
+
+        // Unassign ALL tasks belonging to deleted user
+        await Task.updateMany(
+            { assignedUser: user._id.toString() },
+            { assignedUser: "", assignedUserName: "unassigned"}
+        );
+        await user.deleteOne();
+
+        return res.status(200).json({
+            message: "User deleted",
+            data: user
+        });
+    } catch (error: unknown) {
+        if (error instanceof HttpError) {
+            return res.status(error.status).json({
+                message: error.message,
+                data: {}
+            });
+        }
+        return next(error);
+    }
+});
+
 export default router;
