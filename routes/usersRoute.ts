@@ -138,6 +138,90 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
                 message: "A user with that email already exists",
                 data: {}
             })
+        } else if (error instanceof SyntaxError) {
+            return res.status(400).json({
+                message: "The JSON body is deformed",
+                data: {}
+            });
+        } else {
+            return next(error);
+        }
+    }
+});
+
+router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = req.params.id;
+
+        // URL id is checked first, including ids that aren't valid IDs in MongoDB
+        if (!mongoose.isValidObjectId(id)) throw new HttpError(404, "User not found");
+        const user = await User.findById(id);
+        if (!user) throw new HttpError(404, "User not found");
+
+        // Remember the previous state so tasks can be synced after saving
+        const oldName = user.name;
+        const oldTaskIds = [...user.pendingTasks];
+
+        // Replace the user with the request body
+        const { name, email, pendingTasks } = req.body ?? {};
+        const taskIds = parsePendingTaskIds(pendingTasks);
+        user.set({ name, email, pendingTasks: taskIds });
+        await user.validate();
+        if (await User.exists({ email, _id: { $ne: user._id } })) {
+            throw new HttpError(400, "A user with that email already exists");
+        }
+
+        // validate taskIds
+        await checkPendingTasks(taskIds);
+
+        await user.save();
+        const userId = user._id.toString();
+
+        // Tasks from pendingTasks become unassigned
+        const removedTaskIds = oldTaskIds.filter(taskId => !taskIds.includes(taskId));
+        if (removedTaskIds.length > 0) {
+            await Task.updateMany(
+                { _id: { $in: removedTaskIds }, assignedUser: userId },
+                { assignedUser: "", assignedUserName: "unassigned" }
+            );
+        }
+        if (taskIds.length > 0) {
+            // Removes any tasks in the pendingList from other users
+            await User.updateMany(
+                { _id: { $ne: user._id }, pendingTasks: { $in: taskIds } },
+                { $pull: { pendingTasks: { $in: taskIds } } }
+            );
+            // Assign tasks to this user in the database.
+            await Task.updateMany(
+                { _id: { $in: taskIds } },
+                { assignedUser: userId, assignedUserName: user.name }
+            );
+        }
+        // A name change applies to every task still assigned to this user
+        if (user.name !== oldName) {
+            await Task.updateMany({ assignedUser: userId }, { assignedUserName: user.name });
+        }
+
+        return res.status(200).json({
+            message: "User updated",
+            data: user
+        });
+    } catch (error: unknown) {
+        if (error instanceof HttpError) {
+            return res.status(error.status).json({
+                message: error.message,
+                data: {}
+            });
+        } else if (error instanceof mongoose.Error.ValidationError) {
+            return res.status(400).json({
+                message: "Make sure that the email and name are valid",
+                data: {}
+            });
+        } else if (error instanceof mongoose.mongo.MongoServerError && error.code === 11000) {
+            return res.status(400).json({
+                message: "A user with that email already exists",
+                data: {}
+            });
         } else {
             return next(error);
         }
