@@ -238,10 +238,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
         });
     } catch (error: unknown) {
         if (error instanceof HttpError) {
-            return res.status(error.status).json({
-                message: error.message,
-                data: {}
-            });
+            return res.status(204);
         }
         return next(error);
     }
