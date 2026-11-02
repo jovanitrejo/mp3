@@ -34,12 +34,12 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         if (error instanceof BadQueryError) {
             return res.status(400).json({
                 message: "There was an error parsing your query",
-                data: error.message
+                data: {}
             });
         } else if (error instanceof mongoose.Error.CastError) {
             return res.status(400).json({
                 message: "One of the parameters has the wrong type",
-                data: error.message
+                data: {}
             });
         }
         return next(error);
@@ -49,8 +49,6 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     const id: string | string[] = req.params.id;
     try {
-        const select = parseJSONQueryParam(req.query.select, 'select');
-
         if (!mongoose.isValidObjectId(id)) {
             return res.status(404).json(
                 {
@@ -59,6 +57,9 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
                 }
             )
         }
+
+        const select = parseJSONQueryParam(req.query.select, 'select');
+
 
         const query = User.findById(id);
         if (select) query.select(select);
@@ -78,12 +79,12 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
         if (error instanceof BadQueryError) {
             return res.status(400).json({
                 message: "There was an error parsing your query",
-                data: error.message
+                data: {}
             });
         } else if (error instanceof mongoose.Error.CastError) {
             return res.status(400).json({
                 message: "One of the parameters has the wrong type",
-                data: error.message
+                data: {}
             });
         }
         return next(error);
