@@ -15,7 +15,7 @@
   "scripts": {
     "start": "node server.ts",
     "dev": "nodemon server.ts",
-    "submit": "node submit.ts"
+    "submit": "node submit.js"
   },
   "repository": {
     "type": "git",
