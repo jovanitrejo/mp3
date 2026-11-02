@@ -92,6 +92,9 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { name, description, deadline, completed, assignedUser, assignedUserName } = req.body ?? {};
+        if (typeof name !== 'string' || (description !== undefined && typeof description !== 'string')) {
+            throw new HttpError(400, "name and description must be strings");
+        }
         const task = new Task({ name, description, deadline, completed, assignedUserName });
         await task.validate();
 
@@ -103,6 +106,9 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
             task.assignedUser = user._id.toString();
             task.assignedUserName = user.name;
         } else {
+            if (assignedUserName !== undefined && assignedUserName !== "unassigned") {
+                throw new HttpError(400, "assignedUserName requires a matching assignedUser");
+            }
             task.assignedUser = "";
             task.assignedUserName = "unassigned";
         }
@@ -153,6 +159,9 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 
         // Replace the task with the request body
         const { name, description, deadline, completed, assignedUser, assignedUserName } = req.body ?? {};
+        if (typeof name !== 'string' || (description !== undefined && typeof description !== 'string')) {
+            throw new HttpError(400, "name and description must be strings");
+        }
         task.set({
             name, description, deadline, completed: completed ?? false, assignedUserName
         });
@@ -166,6 +175,9 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
             task.assignedUser = user._id.toString();
             task.assignedUserName = user.name;
         } else {
+            if (assignedUserName !== undefined && assignedUserName !== "unassigned") {
+                throw new HttpError(400, "assignedUserName requires a matching assignedUser");
+            }
             task.assignedUser = "";
             task.assignedUserName = "unassigned";
         }
