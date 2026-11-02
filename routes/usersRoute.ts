@@ -94,6 +94,9 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { name, email, pendingTasks } = req.body ?? {};
+        if (typeof name !== 'string' || typeof email !== 'string') {
+            throw new HttpError(400, "name and email must be strings");
+        }
         const taskIds = parsePendingTaskIds(pendingTasks);
         const newUser = new User({ name, email, pendingTasks: taskIds });
         await newUser.validate();
@@ -165,6 +168,11 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 
         // Replace the user with the request body
         const { name, email, pendingTasks } = req.body ?? {};
+
+        if (typeof name !== 'string' || typeof email !== 'string') {
+            throw new HttpError(400, "name and email must be strings");
+        }
+
         const taskIds = parsePendingTaskIds(pendingTasks);
         user.set({ name, email, pendingTasks: taskIds });
         await user.validate();
