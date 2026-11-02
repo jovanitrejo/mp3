@@ -251,7 +251,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
         );
         await user.deleteOne();
 
-        return res.status(204);
+        return res.status(204).end();
     } catch (error: unknown) {
         if (error instanceof HttpError) {
             return res.status(error.status).json({
