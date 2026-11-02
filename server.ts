@@ -34,7 +34,13 @@ app.use(express.json());
 routes(app, router);
 
 // Define global error handling middleware:
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    if (err.type === "entity.parse.failed") {
+        return res.status(400).json({
+            message: "The request body isn't valid JSON",
+            data: {}
+        });
+    }
     res.status(500).json({
         message: "An internal error occurred",
         data: {}
