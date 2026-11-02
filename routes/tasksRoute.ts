@@ -232,13 +232,13 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
             );
         }
         await task.deleteOne();
-        return res.status(200).json({
-            message: "Task deleted",
-            data: task
-        });
+        return res.status(204);
     } catch (error: unknown) {
         if (error instanceof HttpError) {
-            return res.status(204);
+            return res.status(400).json({
+                message: error.message,
+                data: {}
+            });
         }
         return next(error);
     }
