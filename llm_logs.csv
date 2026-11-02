@@ -1,0 +1,154 @@
+chat
+"I'm writing a postman config, what routes do I test?",
+"Here's a test list mapped to the grading categories. It includes each case's expected status code and checks for the weak spots found earlier (marked ⚠️). Base URL is {{baseUrl}}/api. Run the folders in this order, because later requests reuse ids saved by earlier ones.
+
+0. Setup (save ids into collection variables)
+Request	Body	Expect	Save
+POST /users	{name:"Alice", email:"alice+{{$timestamp}}@x.com"}	201	userA
+POST /users	{name:"Bob", email:"bob+{{$timestamp}}@x.com"}	201	userB
+POST /tasks	{name:"T1", deadline:"2026-12-01"}	201, assignedUser:"", assignedUserName:"unassigned", completed:false	task1
+POST /tasks	{name:"T2", deadline:"2026-12-01", completed:true}	201	taskDone
+1. Create & validate (20%)
+Users
+
+Missing name, missing email, or empty body → 400
+Duplicate email → 400
+⚠️ name: 123 or email: {} → 400
+pendingTasks: "notalist" → 400
+pendingTasks: ["abc"] → 400
+pendingTasks: [<valid but nonexistent id>] → 404
+pendingTasks: [{{taskDone}}] → 400
+Body with dateCreated: "2000-01-01" → 201, and dateCreated is the current time (the sent value is ignored)
+⚠️ Malformed JSON body (raw text {name:) → 400
+Tasks
+
+Missing name or missing deadline → 400
+deadline: "notadate" → 400
+completed: "abc" → 400
+assignedUser: "abc" → 400
+assignedUser: <nonexistent valid id> → 404
+assignedUser: {{userA}}, assignedUserName: "Wrong" → 400
+⚠️ assignedUser: "", assignedUserName: "Bob" → 400
+assignedUser: {{userA}} with no name → 201, assignedUserName:"Alice", and Alice's pendingTasks now contains it
+2. select on single resources (7.5%)
+GET /users/{{userA}}?select={"name":1} → only _id and name
+GET /tasks/{{task1}}?select={"_id":0} → no _id
+GET /users/{{userA}}?where={"name":"zzz"} → 200 with Alice (where is ignored on /:id)
+GET /users/abc and /users/<nonexistent valid id> → 404, same for /tasks
+⚠️ ?select={bad → 400
+3. Updating missing resources (10%)
+PUT /users/<nonexistent valid id>, /users/abc, /tasks/<nonexistent valid id>, /tasks/abc → 404
+PUT /users/abc with an invalid body → still 404 (the URL id is checked first)
+4. Two-way references (27.5%)
+Check both sides after each step: GET the task and GET the user.
+
+PUT /users/{{userA}} with pendingTasks:[task1] → task1 assigned to Alice
+PUT /users/{{userB}} with pendingTasks:[task1] → task1 moves to Bob and is gone from Alice's list
+PUT /users/{{userB}} with pendingTasks:[] → task1 is ""/"unassigned"
+PUT /tasks/{{task1}} with assignedUser:userA → in Alice's pendingTasks
+PUT /tasks/{{task1}} with assignedUser:userB → removed from Alice, added to Bob
+PUT /tasks/{{task1}} with completed:true and the same user → removed from Bob's pendingTasks, assignedUser stays Bob
+PUT /tasks/{{task1}} with completed:false → back in Bob's pendingTasks
+PUT /users/{{userB}} with name:"Robert" → assignedUserName:"Robert" on all of Bob's tasks, completed ones included
+PUT /tasks/{{task1}} with assignedUser:"" → unassigned and removed from Bob
+PUT /users/{{userA}} with a valid body plus dateCreated → dateCreated unchanged
+Each failure case from section 1 against PUT, followed by a GET to confirm nothing changed
+5. Query params on GET /tasks (15%)
+No params → at most 100 results
+?where={"completed":true} → only completed tasks
+?where={"_id":{"$in":["{{task1}}","{{taskDone}}"]}} → 2 results
+?sort={"name":-1} → names in descending order
+?skip=1&limit=1 → 1 result
+?count=true → number in data
+?where={"completed":true}&count=true → matching count
+?where={"name":"nomatch"} → 200, data: []
+?where={bad → 400, and the same for sort, select, skip, limit
+⚠️ ?limit={"a":1} → should be 400, not 500
+Combined: ?where=...&sort=...&select=...&skip=0&limit=5
+Repeat a few of these on /users. Users have no default limit.
+6. Deleting (20%)
+DELETE /tasks/{{task1}} while it's assigned → 200, then GET returns 404, and it's gone from the user's pendingTasks
+DELETE /users/{{userA}} → 200, then GET returns 404, and all of Alice's tasks, completed ones included, become ""/"unassigned"
+DELETE again, DELETE /users/abc, and DELETE a nonexistent valid id → 404, same for /tasks
+Teardown: delete everything created in setup
+Checks for every request
+Add these as collection-level test scripts:
+
+
+pm.test("has message + data", () => {
+  const j = pm.response.json();
+  pm.expect(j).to.have.property("message").that.is.a("string");
+  pm.expect(j).to.have.property("data");
+});
+pm.test("no mongoose leak", () => {
+  pm.expect(pm.response.text()).to.not.match(/Cast to|ValidationError|E11000|MongoServerError/);
+});
+To generate the Postman collection files directly (the YAML request and test files saved in your repo), I can do that with the Postman plugin. Its MCP server isn't authorized in this session yet, but writing the local collection files doesn't need it.
+",
+"I think I connected the postman MCP, can you check?",
+"The Postman MCP server isn't connected yet. claude mcp list still shows it as needing authentication:
+
+
+plugin:postman:postman: https://mcp.postman.com/mcp (HTTP) - ! Needs authentication
+None of its tools are available in this session either. It might have been authorized in a different session, or the sign-in didn't finish.
+
+To connect it:
+
+Run /mcp in an interactive Claude Code session, choose plugin:postman:postman, and finish the sign-in in your browser.
+Restart this session, or open a new one, so the tools load. A session only picks up MCP tools when it starts.
+You don't need the MCP to build the test collection. The Postman CLI (v1.75.0) is already installed. I can write the collection as local files in your repo and run it with the CLI against localhost or your Render URL. You'd only need the MCP to sync the collection to a Postman workspace in the cloud. Want me to start on the local files?
+
+
+
+",
+"I checked again and the Postman MCP still isn't connected:
+
+claude mcp list still shows plugin:postman:postman ... ! Needs authentication.
+Searching this session's tools finds no Postman tools at all, including the authenticate tool that would let me start the sign-in from here.
+So I can't run the skill's setup steps (checking your Postman account, listing workspaces) from this session.
+
+To connect it:
+
+Run /mcp in Claude Code, choose plugin:postman:postman, and sign in to Postman in your browser.
+Restart Claude Code, or start a new session. A session only loads MCP tools when it starts, so this one won't see the server even after you sign in.
+Ask me to check again. I'll confirm which account you're signed in as and list your workspaces.
+Without the MCP: the Postman CLI (v1.75.0) is already installed, and it's the better tool for keeping a collection in your repo. Run postman login in your terminal, and I can write the collection files locally and run them against localhost or your Render URL. You'd only need the MCP to work with collections stored in your Postman cloud workspace.
+
+
+
+",
+"Can you check again?",
+"The Postman MCP is connected now. You're signed in as Jovani Trejo (jtrej7), on the team "Jovani Trejo's Team". All 233 tools are loaded.
+
+Your workspaces:
+
+Jovani Trejo's Workspace (team) has one collection, MP3
+Default workspace (personal) is empty.
+The MP3 collection is probably the one you started. Want me to open it and compare its requests against the test list from earlier? Then I can add the missing requests and test scripts to that collection rather than creating a new one.
+
+
+
+",
+"Yes, please",
+"I updated the MP3 collection in Jovani Trejo's Workspace
+
+The collection now has 7 numbered folders with 94 requests:
+
+Folder	Requests	Covers
+0 Setup	4	Creates Alice, Bob, T1 and a completed task T2done, and saves their ids
+1 Create & validate	23	Every 400 and 404 case for POST, default values, dateCreated being ignored, an unknown route
+2 select on single resources	8	select includes and excludes, where ignored on /:id, 404s for bad and nonexistent ids
+3 Updating missing resources	6	PUT to nonexistent or malformed ids, which must return 404 even when the body is also invalid
+4 Two-way references	19	Every row of the README and FAQ tables, plus failed requests followed by a GET to confirm nothing changed
+5 Query parameters	19	where, $in, sort, skip/limit, count, combined parameters, invalid JSON
+6 Deleting	12	Deleted tasks leave pendingTasks; deleting a user unassigns all their tasks, completed ones too; repeat deletes return 404
+7 Teardown	3	Deletes the remaining test data
+How it works:
+
+Expected status comes from the request name. For example, User missing email → 400 expects a 400. A collection-level test checks that status on every request, along with the {message, data} shape and that no Mongoose error text leaks into the response.
+The two-way reference tests check both sides. After each change, they fetch the task or user from the other side to confirm it was updated too.
+No stray data is left behind. Some negative tests create a resource when they shouldn't, such as the name: 123 one; those resources are deleted automatically. So are resources from requests marked (temp).
+Point it at your server with baseUrl. It's a collection variable, set to http://localhost:3000 for now. Change it to your Render URL to test the deployed API.
+Expected failures: the 6 requests marked ⚠️ in their descriptions test the gaps from the code review: wrong types, malformed JSON, assignedUserName without assignedUser, the description default, limit with the wrong shape, and the HTML 404. They'll fail until those are fixed. The Mongoose-leak check will also fail on any GET that hits the CastError branch.
+
+Run it with the folders in order: in Postman, open the collection and choose Run. Alternatively, start your server with npm start, log in to the Postman CLI with postman login, and I can run the collection from here and go through the failures with you."
